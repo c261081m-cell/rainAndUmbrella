@@ -40,8 +40,8 @@ function windowResized() {
 
 // --- 棒人間出現スケジューリング ---
 function scheduleNextWalker() {
-  const delaySec = random(0, 10);          // 0〜10秒
-  nextWalkerTime = frameCount + delaySec * 60; // 60fps想定
+  const delaySec = random(0, 10);               // 0〜10秒
+  nextWalkerTime = frameCount + delaySec * 60;  // 60fps想定
 }
 
 function spawnWalker() {
@@ -49,10 +49,12 @@ function spawnWalker() {
   walker = {
     x: fromLeft ? -40 : width + 40,
     dir: fromLeft ? 1 : -1,
+    baseSpeed: 2.2,
     speed: 2.2,
     ampLeg: 12,
     ampArm: 14,
-    phase: 0
+    phase: 0,
+    stopped: false
   };
 }
 
@@ -81,7 +83,9 @@ function draw() {
   const umbrellaCY = height - stemH;
 
   // 雨生成
-  if (balls.length < MAX_BALLS && frameCount % SPAWN_INTERVAL === 0) spawnBall();
+  if (balls.length < MAX_BALLS && frameCount % SPAWN_INTERVAL === 0) {
+    spawnBall();
+  }
 
   noStroke();
   fill(255);
@@ -100,8 +104,8 @@ function draw() {
           (b.side === +1 && b.theta >= TWO_PI - EDGE_EPS)) {
         const tx = -Math.sin(b.theta);
         const ty =  Math.cos(b.theta);
-        const v  = max(SLIDE_SPEED, SPEED * 0.8);
-        const s0 = wind * tx;
+        const v   = max(SLIDE_SPEED, SPEED * 0.8);
+        const s0  = wind * tx;
         b.vx = tx * v + s0 * SLIDE_WIND_GAIN;
         b.vy = max(ty * v, SPEED * 0.8);
         b.mode = "fall";
@@ -115,24 +119,25 @@ function draw() {
 
       const dx = b.x - umbrellaCX;
       const dy = b.y - umbrellaCY;
-      const dist = Math.hypot(dx, dy);
+      const distance = Math.hypot(dx, dy); // ← dist → distance
       const target = canopyR + R;
 
-      if (b.y <= umbrellaCY && dist <= target) {
+      if (b.y <= umbrellaCY && distance <= target) {
         let theta = Math.atan2(dy, dx);
         if (theta < 0) theta += TWO_PI;
+
         if (theta >= Math.PI && theta <= TWO_PI) {
           b.mode = "slide";
-          const nx = dx / (dist || 1), ny = dy / (dist || 1);
+          const nx = dx / (distance || 1), ny = dy / (distance || 1);
           b.x = umbrellaCX + (canopyR + R) * nx;
           b.y = umbrellaCY + (canopyR + R) * ny;
           b.theta = theta;
           b.side = (dx < 0) ? -1 : +1;
         } else {
-          const nx = dx / (dist || 1), ny = dy / (dist || 1);
-          const push = target - dist + 0.5;
-          b.x += nx * push;
-          b.y += ny * push;
+          const nx = dx / (distance || 1), ny = dy / (distance || 1);
+          const pushOut = target - distance + 0.5; // ← ここをリネーム
+          b.x += nx * pushOut;
+          b.y += ny * pushOut;
         }
       }
     }
@@ -150,8 +155,8 @@ function draw() {
 
   // --- 棒人間 ---
   if (walker) {
-    updateWalker();           // ← まず更新
-    if (walker) drawWalker(); // ← ここで再チェックしてから描画（重要！）
+    updateWalker(umbrellaCX);
+    if (walker) drawWalker();
   } else if (frameCount >= nextWalkerTime) {
     spawnWalker();
   }
@@ -173,11 +178,22 @@ function drawUmbrella(cx, bottomY) {
 }
 
 // --- 棒人間 ---
-function updateWalker() {
-  walker.x += walker.dir * walker.speed;
-  walker.phase += 0.12;
+function updateWalker(umbrellaCX) {
+  const dx = walker.x - umbrellaCX;
+  const ENTER = canopyR - 6;
+  const EXIT  = canopyR + 10;
 
-  // 画面外に出たら削除して次の登場を予約
+  if (!walker.stopped && Math.abs(dx) <= ENTER) {
+    walker.stopped = true;
+    walker.speed = 0;
+  } else if (walker.stopped && Math.abs(dx) >= EXIT) {
+    walker.stopped = false;
+    walker.speed = walker.baseSpeed;
+  }
+
+  walker.x += walker.dir * walker.speed;
+  if (!walker.stopped) walker.phase += 0.12;
+
   if (walker.dir === 1 && walker.x > width + 40) {
     walker = null;
     scheduleNextWalker();
@@ -199,9 +215,9 @@ function drawWalker() {
   const shX  = hipX;
   const shY  = hipY - torsoLen;
 
-  const s = Math.sin(walker.phase);
-  const strideLeg = 12 * s;
-  const strideArm = 14 * -s;
+  const s = walker.stopped ? 0 : Math.sin(walker.phase);
+  const strideLeg = walker.ampLeg * s;
+  const strideArm = walker.ampArm * -s;
 
   stroke(255);
   strokeWeight(2);
@@ -217,7 +233,7 @@ function drawWalker() {
 
 // --- 風インジケータ ---
 function drawWindIndicator(w) {
-  push();
+  push(); // ← p5.jsの状態保存（予約済み関数）
   const cx = 40, cy = 40;
   const len = 20 + 20 * abs(w) / WIND_MAX;
   stroke(255);
@@ -229,5 +245,5 @@ function drawWindIndicator(w) {
   const x2 = cx + len * dir;
   line(x2, cy, x2 - 6 * dir, cy - 4);
   line(x2, cy, x2 - 6 * dir, cy + 4);
-  pop();
+  pop();  // ← 復元
 }
