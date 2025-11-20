@@ -277,21 +277,60 @@ function drawWindIndicator(w) {
   pop();  // 復元
 }
 // --- 屋根の描画 ---
+// --- 屋根（家）の描画：線だけ & 軒下に棒人間が入る高さに調整 ---
 function drawRoofs() {
-  noStroke();
-  fill(255);
+  const groundY = height - 6; // 棒人間が立っている地面とそろえる
+  const houseW = 120;         // 家の幅
+  const houseH = 60;          // 軒下までの高さ（棒人間の頭より少し上）
+  const roofH  = 30;          // 屋根の高さ（三角のてっぺん）
 
-  // 左下の屋根（三角形）
-  beginShape();
-  vertex(0, height - 60);
-  vertex(100, height - 60);
-  vertex(0, height);
-  endShape(CLOSE);
+  stroke(255);
+  strokeWeight(2);
+  noFill();
 
-  // 右下の屋根（三角形）
-  beginShape();
-  vertex(width, height - 60);
-  vertex(width - 100, height - 60);
-  vertex(width, height);
-  endShape(CLOSE);
+  // ==== 左の家 ====
+  {
+    const x = 0;                    // 左端から
+    const wallTopY = groundY - houseH;
+
+    // 壁（四角）
+    rect(x, wallTopY, houseW, houseH);
+
+    // 屋根（三角）
+    const roofLeftX  = x;
+    const roofRightX = x + houseW;
+    const roofBaseY  = wallTopY;
+    const roofPeakX  = x + houseW / 2;
+    const roofPeakY  = wallTopY - roofH;
+
+    line(roofLeftX,  roofBaseY, roofPeakX, roofPeakY);
+    line(roofPeakX,  roofPeakY, roofRightX, roofBaseY);
+
+    // 軒を少しだけ外側に出してみる（お好みで）
+    line(roofLeftX,  roofBaseY,  roofLeftX  - 10, roofBaseY);
+    line(roofRightX, roofBaseY,  roofRightX + 10, roofBaseY);
+  }
+
+  // ==== 右の家 ====
+  {
+    const x = width - houseW;       // 右端から
+    const wallTopY = groundY - houseH;
+
+    // 壁（四角）
+    rect(x, wallTopY, houseW, houseH);
+
+    // 屋根（三角）
+    const roofLeftX  = x;
+    const roofRightX = x + houseW;
+    const roofBaseY  = wallTopY;
+    const roofPeakX  = x + houseW / 2;
+    const roofPeakY  = wallTopY - roofH;
+
+    line(roofLeftX,  roofBaseY, roofPeakX, roofPeakY);
+    line(roofPeakX,  roofPeakY, roofRightX, roofBaseY);
+
+    // 軒を少しだけ外側に出してみる
+    line(roofLeftX,  roofBaseY,  roofLeftX  - 10, roofBaseY);
+    line(roofRightX, roofBaseY,  roofRightX + 10, roofBaseY);
+  }
 }
